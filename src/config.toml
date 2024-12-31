@@ -1,0 +1,11 @@
+[program]
+title = "Fluentus"
+
+[database]
+name = "Fluentus"
+
+[database.tables]
+projects = "projects"
+
+[ftl_field]
+check = "check"
