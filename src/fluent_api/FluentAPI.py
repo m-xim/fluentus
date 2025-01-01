@@ -4,16 +4,16 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Union, List, Dict, Any, Set, Optional
 
-from fluent.syntax import parse, ast, serialize, FluentParser
-from fluent.syntax.ast import Resource, TextElement, Placeable, Junk
+from fluent.syntax import parse, serialize, FluentParser
+from fluent.syntax.ast import (Resource, TextElement, Placeable, Junk, Message, Term, Comment, PatternElement,
+                               Attribute, Identifier, Pattern)
 from fluent.syntax.serializer import serialize_placeable
+from loguru import logger
+
 from src.fluent_api.base_type.elements import elements_type
 from src.fluent_api.base_type.translation_data import TranslationData
 from src.fluent_api.utils.bool_and_string import string_bool, bool_to_string
-
 from src.utils.config_reader import get_config, FtlFieldConfig
-
-from loguru import logger
 
 
 class FluentAPI:
@@ -111,9 +111,9 @@ class FluentAPI:
     def parse_fluent_ast(self, resource: Resource, lang_folder: str = None, file_patch: str = None) \
             -> Dict[str, Dict[str, TranslationData]]:
         for entry in resource.body:
-            if isinstance(entry, ast.Message):
+            if isinstance(entry, Message):
                 self._parse_message_or_term(entry, lang_folder, file_patch)
-            elif isinstance(entry, ast.Term):
+            elif isinstance(entry, Term):
                 self._parse_message_or_term(entry, lang_folder, file_patch, is_term=True)
             else:
                 logger.warning(f"Unsupported entry type: {type(entry)}")
@@ -126,7 +126,7 @@ class FluentAPI:
         except Exception as e:
             logger.error(f"Error parsing {'term' if is_term else 'message'} '{entry.id.name}': {e}")
 
-    def parse_message(self, entry: Union[ast.Message, ast.Term], file_patch: str = None) -> TranslationData:
+    def parse_message(self, entry: Union[Message, Term], file_patch: str = None) -> TranslationData:
         comment, check = self._parse_comment(entry.comment)
 
         attributes = {}
@@ -139,9 +139,11 @@ class FluentAPI:
                     logger.error(f"Error parsing attribute '{attr.id.name}': {e}")
                     attributes[attr_name] = []
 
-        return TranslationData(value=self.elements_to_str(entry.value.elements) if entry.value else '', attributes=attributes, comment=comment, check=check, patch=file_patch)
+        value = self.elements_to_str(entry.value.elements) if entry.value else ''
+        
+        return TranslationData(value=value, attributes=attributes, comment=comment, check=check, patch=file_patch)
 
-    def _parse_comment(self, comment: Optional[ast.Comment]) -> tuple[Optional[str], bool]:
+    def _parse_comment(self, comment: Optional[Comment]) -> tuple[Optional[str], bool]:
         if comment:
             comments_row = re.split(r'\n(?!\\\\)', comment.content)
             comments = []
@@ -160,12 +162,12 @@ class FluentAPI:
         return comments_text, check
 
     @staticmethod
-    def serialize_element(element: ast.PatternElement) -> str:
-        if isinstance(element, ast.TextElement):
+    def serialize_element(element: PatternElement) -> str:
+        if isinstance(element, TextElement):
             return element.value
-        if isinstance(element, ast.Junk):
+        if isinstance(element, Junk):
             return element.content.removeprefix('variable = ')
-        if isinstance(element, ast.Placeable):
+        if isinstance(element, Placeable):
             return serialize_placeable(element)
         raise Exception('Unknown element type: {}'.format(type(element)))
 
@@ -189,7 +191,7 @@ class FluentAPI:
         parsed_entry = FluentParser().parse(f"variable = {value}")
         parsed_value = []
         for i in parsed_entry.body:
-            if isinstance(i, ast.Junk):
+            if isinstance(i, Junk):
                 return value, True
             else:
                 parsed_value.extend(i.value.elements)
@@ -200,7 +202,7 @@ class FluentAPI:
         return beautiful_str, False
 
     def translation_data_to_ast(self, translation_data: TranslationData,
-                                name: Optional[str] = None) -> ast.Term | ast.Message:
+                                name: Optional[str] = None) -> Term | Message:
         # Create comment
         comment = translation_data.comment or None
 
@@ -208,13 +210,13 @@ class FluentAPI:
             check_str = f"@{self.config.check}: {bool_to_string(translation_data.check)}"
             comment = f"{comment}\n{check_str}" if comment else check_str
 
-        comment_ast = ast.Comment(content=comment) if comment else None
+        comment_ast = Comment(content=comment) if comment else None
 
         # Create attributes
         attributes = [
-            ast.Attribute(
-                id=ast.Identifier(name=key.removeprefix('.')),
-                value=ast.Pattern(elements=self.parse_str_to_ast(value))
+            Attribute(
+                id=Identifier(name=key.removeprefix('.')),
+                value=Pattern(elements=self.parse_str_to_ast(value))
             )
             for key, value in translation_data.attributes.items()
         ]
@@ -222,16 +224,21 @@ class FluentAPI:
         # Create Term or Message
         if name.startswith('-'):
             # Create value
-            ast_value = ast.Pattern(elements=self.parse_str_to_ast(translation_data.value))
+            ast_value = Pattern(elements=self.parse_str_to_ast(translation_data.value))
 
-            return ast.Term(id=ast.Identifier(name=name.removeprefix('-')), value=ast_value, attributes=attributes, comment=comment_ast)
+            return Term(
+                id=Identifier(name=name.removeprefix('-')), 
+                value=ast_value, 
+                attributes=attributes, 
+                comment=comment_ast
+            )
 
         if not translation_data.value:
             ast_value = None
         else:
             # Create value
-            ast_value = ast.Pattern(elements=self.parse_str_to_ast(translation_data.value))
-        return ast.Message(id=ast.Identifier(name=name), value=ast_value, attributes=attributes, comment=comment_ast)
+            ast_value = Pattern(elements=self.parse_str_to_ast(translation_data.value))
+        return Message(id=Identifier(name=name), value=ast_value, attributes=attributes, comment=comment_ast)
 
     def load_ftl_files(self, folder_path: str) -> None:
         self.folder_path = folder_path
@@ -253,7 +260,7 @@ class FluentAPI:
             logger.error(f"Error loading file {ftl_path}: {e}")
 
     def save_all_files(self, new_patch_folder: Optional[str] = None):
-        bodies: Dict[str, List[ast.Message | ast.Term]] = defaultdict(list)
+        bodies: Dict[str, List[Message | Term]] = defaultdict(list)
 
         for variable, tdata_langs in self.translations_data.items():
             for lang, tdata in tdata_langs.items():
@@ -273,6 +280,6 @@ class FluentAPI:
                 patch_path.parent.mkdir(parents=True, exist_ok=True)
 
                 with patch_path.open('w', encoding='utf-8') as file:
-                    file.write(serialize(ast.Resource(body=body)))
+                    file.write(serialize(Resource(body=body)))
 
         self.edited = False

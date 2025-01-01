@@ -1,7 +1,8 @@
 import sys
+
 from PyQt6 import uic
 from PyQt6.QtCore import Qt, QModelIndex
-from PyQt6.QtSql import QSqlTableModel, QSqlQuery
+from PyQt6.QtSql import QSqlTableModel
 from PyQt6.QtWidgets import QApplication, QMessageBox, QFileDialog, QMainWindow, QPushButton, QTableView
 from loguru import logger
 
@@ -91,6 +92,7 @@ class FluentusStart(QMainWindow):
 
         # Refresh the model to display the new record
         self.model.select()
+
 
 if __name__ == "__main__":
     configure_logger()

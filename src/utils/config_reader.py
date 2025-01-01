@@ -1,6 +1,7 @@
 from functools import lru_cache
 from tomllib import load
 from typing import Type, TypeVar
+
 from pydantic import BaseModel
 
 from src.utils.resource_path import resource_path
