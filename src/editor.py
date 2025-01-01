@@ -2,14 +2,12 @@ from functools import partial
 from typing import Optional, Union
 
 from PyQt6 import uic
-
-from PyQt6.QtWidgets import (QWidget, QMessageBox, QFileDialog, QPlainTextEdit, QCheckBox, QComboBox)
+from PyQt6.QtWidgets import QWidget, QMessageBox, QFileDialog, QPlainTextEdit, QCheckBox, QComboBox
 from loguru import logger
 
-from src.utils.config_reader import get_config, Program
 from src.fluent_api.FluentAPI import FluentAPI
+from src.utils.config_reader import get_config, Program
 from src.utils.resource_path import resource_path
-
 from src.widgets.qt_close_dialog import CloseDialog
 from src.widgets.table_manager import TableManager
 
@@ -70,6 +68,7 @@ class FluentusEditor(QWidget):
         """Initializes the editor with a specified folder."""
         self.fluent_api.load_ftl_files(folder)
         self.folder_text.setText(folder)
+        self.refresh_editing_state()
         self.set_language_selectors()
         self.update_table()
 
@@ -78,7 +77,7 @@ class FluentusEditor(QWidget):
         if self.fluent_api.edited:
             self.fluent_api.save_all_files()
             QMessageBox.information(self, "Save Changes", "All changes have been saved successfully!")
-            self.fluent_api.edited = False
+            self.refresh_editing_state(False)
         else:
             QMessageBox.information(self, "No Changes", "No changes have been made.")
 
@@ -158,10 +157,11 @@ class FluentusEditor(QWidget):
 
     def _open_start_window(self):
         """Open the start window and close the current editor."""
-        self.window_editor = None
         from src.app import FluentusStart
+
         self.window_editor = FluentusStart()
         self.window_editor.show()
+
         self.close()
 
     def update_cache(self, editor: Union[QPlainTextEdit, QCheckBox], field: str, lang: QComboBox):
@@ -179,9 +179,24 @@ class FluentusEditor(QWidget):
             # Because (else): Called if update table
             self.load_variable()
 
+        # Update title
+        self.refresh_editing_state()
+
+    def refresh_editing_state(self, edit_status: Optional[bool] = None) -> None:
+        """Refreshes the editing status in 'fluent_api' and updates the window title."""
+        
+        if edit_status is not None:
+            self.fluent_api.edited = edit_status
+
+        folder_suffix = f" - {self.fluent_api.folder_path}" if self.fluent_api.folder_path else ""
         program = get_config(Program, 'program')
+
         if self.fluent_api.edited:
-            self.setWindowTitle(f"{program.title}*")
+            window_title = f"*{program.title}{folder_suffix}"
+        else:
+            window_title = f"{program.title}{folder_suffix}"
+
+        self.setWindowTitle(window_title)
 
     def closeEvent(self, event):
         """Handle the close event with unsaved changes."""
