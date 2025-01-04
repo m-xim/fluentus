@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TranslationData(BaseModel):
-    value: Optional[str] = Field(default_factory=list)
+    value: Optional[str] = Field(default_factory=str)
     attributes: Optional[Dict[str, str]] = Field(default_factory=dict[str, str])
     comment: Optional[str] = None
     check: bool = False
