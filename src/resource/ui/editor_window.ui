@@ -42,6 +42,9 @@
      </item>
      <item>
       <widget class="QLabel" name="folder_text">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>Folder not choose</string>
        </property>
