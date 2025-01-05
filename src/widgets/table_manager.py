@@ -1,9 +1,12 @@
 import re
-from typing import Optional, Callable
+from collections import defaultdict
+from typing import Optional, Callable, Iterable
 
 from PyQt6.QtGui import QColor, QIcon
 from PyQt6.QtWidgets import QHeaderView, QTreeWidget, QTreeWidgetItem
 
+from src.fluent_api.FluentAPI import FluentAPI
+from src.fluent_api.base_type.translations import LanguagesType
 from src.utils.resource_path import resource_path
 
 
@@ -16,8 +19,7 @@ class TableManager:
     COLUMN_TRANSLATION1 = 2
     COLUMN_TRANSLATION2 = 3
 
-    # Header labels for the columns
-    HEADER_LABELS = ["", "Variable", "Translation 1", "Translation 2"]
+    COLUMN_COUNT = 4
 
     # Colors for text highlighting
     COLOR_HIGHLIGHT = QColor(230, 200, 49)
@@ -29,17 +31,22 @@ class TableManager:
     # Fixed width for the icon column
     FIXED_COLUMN_WIDTH = 45
 
-    def __init__(self, table_widget: QTreeWidget, messages_cache,
-                 item_clicked_callback: Optional[Callable] = None):
+    def __init__(
+            self,
+            table: QTreeWidget,
+            fluent_api: FluentAPI,
+            item_clicked_callback: Optional[Callable] = None
+    ):
         """
         Initializes the TableManager.
 
-        :param table_widget: The QTreeWidget instance to manage.
-        :param messages_cache: Cache containing message data.
+        :param table: The QTreeWidget instance to manage.
         """
-        self.table_widget = table_widget
-        self.messages_cache = messages_cache
+        self.table = table
+        self.fluent_api = fluent_api
         self.item_clicked_callback = item_clicked_callback
+
+        self.translations = self.fluent_api.translations
 
         self.comment_icon = QIcon(self.ICON_COMMENT_PATH)
         self._setup_table()
@@ -47,19 +54,83 @@ class TableManager:
     def _setup_table(self):
         """Configures the table settings."""
 
-        self.table_widget.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
-        self.table_widget.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
-        # self.table_widget.itemClicked.connect(self.item_clicked_callback)
+        self.table.setSelectionBehavior(QTreeWidget.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
 
-        # FIXME: Called when user values and auto adjustments change
-        self.table_widget.itemSelectionChanged.connect(self.item_clicked_callback)
+        self.table.itemSelectionChanged.connect(self.item_clicked_callback)
 
-        self.table_widget.setColumnCount(len(self.HEADER_LABELS))
-        self.table_widget.setHeaderLabels(self.HEADER_LABELS)
-        self.table_widget.header().setSectionResizeMode(
-            self.COLUMN_ICON, QHeaderView.ResizeMode.Fixed
-        )
-        self.table_widget.setColumnWidth(self.COLUMN_ICON, self.FIXED_COLUMN_WIDTH)
+        self.table.setColumnCount(self.COLUMN_COUNT)
+        self.set_headers()
+        self.table.header().setSectionResizeMode(self.COLUMN_ICON, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(self.COLUMN_ICON, self.FIXED_COLUMN_WIDTH)
+
+    def set_current_item(self, lang1: str, lang2: str):
+        """
+        Updates the current item's translations and formatting based on the provided languages.
+
+        :param lang1: The first language code.
+        :param lang2: The second language code.
+        """
+
+        variable, attribute = self.get_variable()
+        if not variable:
+            return
+
+        variable_item, attribute_item = self.get_item()
+
+        languages = self.translations[variable]
+
+        if attribute:
+            self._update_attribute_item(attribute_item, languages, attribute, lang1, lang2)
+        else:
+            self._update_variable_item(variable_item, languages, lang1, lang2)
+
+        self._update_icon_and_formatting(variable_item, languages, lang1, lang2)
+
+    def _update_variable_item(self, variable_item: QTreeWidgetItem, languages: LanguagesType, lang1: str, lang2: str) -> None:
+        """Updates the variable item's translations."""
+
+        # Update Translation 1
+        translation1_new = self._extract_text(languages[lang1].value)
+        translation1_old = variable_item.text(self.COLUMN_TRANSLATION1)
+        if translation1_new != translation1_old:
+            variable_item.setText(self.COLUMN_TRANSLATION1, translation1_new)
+
+        # Update Translation 2
+        translation2_new = self._extract_text(languages[lang2].value)
+        translation2_old = variable_item.text(self.COLUMN_TRANSLATION2)
+        if translation2_new != translation2_old:
+            variable_item.setText(self.COLUMN_TRANSLATION2, translation2_new)
+
+    def _update_attribute_item(
+            self, attribute_item: QTreeWidgetItem, languages: LanguagesType, attribute: str, lang1: str, lang2: str
+    ) -> None:
+        """Updates the attribute item's translations."""
+
+        # Update Translation 1
+        translation1_new = self._extract_text(languages[lang1].attributes[attribute])
+        translation1_old = attribute_item.text(self.COLUMN_TRANSLATION1)
+        if translation1_new != translation1_old:
+            attribute_item.setText(self.COLUMN_TRANSLATION1, translation1_new)
+
+        # Update Translation 2
+        translation2_new = self._extract_text(languages[lang2].attributes[attribute])
+        translation2_old = attribute_item.text(self.COLUMN_TRANSLATION2)
+        if translation2_new != translation2_old:
+            attribute_item.setText(self.COLUMN_TRANSLATION2, translation2_new)
+
+    def _update_icon_and_formatting(self, variable_item: QTreeWidgetItem, languages: LanguagesType, lang1: str, lang2: str) -> None:
+        """Sets the icon and text formatting based on comments and checks."""
+
+        # Set icon
+        has_comment = bool(languages[lang1].comment or languages[lang2].comment)
+        variable_item.setIcon(self.COLUMN_ICON, self.comment_icon if has_comment else QIcon())
+
+        # Set foreground colors
+        highlight_lang1 = self.COLOR_HIGHLIGHT if languages[lang1].check else self.COLOR_DEFAULT
+        highlight_lang2 = self.COLOR_HIGHLIGHT if languages[lang2].check else self.COLOR_DEFAULT
+        variable_item.setForeground(self.COLUMN_TRANSLATION1, highlight_lang1)
+        variable_item.setForeground(self.COLUMN_TRANSLATION2, highlight_lang2)
 
     def populate_table(self, lang1: str, lang2: str):
         """
@@ -68,28 +139,29 @@ class TableManager:
         :param lang1: The first language code.
         :param lang2: The second language code.
         """
-        selected_variable, selected_attribute = self._get_selection()
+        selected_variable, selected_attribute = self.get_variable()
 
-        self.table_widget.clear()
+        self.table.clear()
 
-        for variable, data in self.messages_cache.items():
-            item = self._create_top_level_item(variable, data, lang1, lang2)
-            self.table_widget.addTopLevelItem(item)
+        for variable, languages in self.translations.items():
+            item = self._create_top_level_item(variable, languages, lang1, lang2)
+            self.table.addTopLevelItem(item)
 
+        self.set_headers(lang1, lang2)
         self._restore_selection(selected_variable, selected_attribute)
 
-    def _create_top_level_item(self, variable, data, lang1, lang2) -> QTreeWidgetItem:
+    def _create_top_level_item(self, variable: str, languages: LanguagesType, lang1: str, lang2: str) -> QTreeWidgetItem:
         """
         Creates a top-level table item with translations and attributes.
 
         :param variable: The variable name.
-        :param data: The data associated with the variable.
+        :param languages: The data associated with the variable.
         :param lang1: The first language code.
         :param lang2: The second language code.
         :return: A configured QTreeWidgetItem.
         """
-        translation1 = self._extract_text(data[lang1].value)
-        translation2 = self._extract_text(data[lang2].value)
+        translation1 = self._extract_text(languages[lang1].value)
+        translation2 = self._extract_text(languages[lang2].value)
         item = QTreeWidgetItem([
             "",  # Empty cell for the icon
             variable,
@@ -97,33 +169,23 @@ class TableManager:
             translation2
         ])
         # Set icon and formatting
-        if data[lang1].comment or data[lang2].comment:
-            item.setIcon(self.COLUMN_ICON, self.comment_icon)
-
-        item.setForeground(
-            self.COLUMN_TRANSLATION1,
-            self.COLOR_HIGHLIGHT if data[lang1].check else self.COLOR_DEFAULT
-        )
-        item.setForeground(
-            self.COLUMN_TRANSLATION2,
-            self.COLOR_HIGHLIGHT if data[lang2].check else self.COLOR_DEFAULT
-        )
+        self._update_icon_and_formatting(item, languages, lang1, lang2)
 
         # Add child items for attributes
-        attributes = self._process_attributes(data, lang1, lang2)
+        attributes = self.aggregate_attributes(languages, self.fluent_api.get_languages())
         for attr_name, attr_values in attributes.items():
             child_item = QTreeWidgetItem([
                 "",  # Empty cell for the icon
                 attr_name,
-                self._extract_text(attr_values.get(lang1, [])),
-                self._extract_text(attr_values.get(lang2, []))
+                self._extract_text(attr_values.get(lang1, '')),
+                self._extract_text(attr_values.get(lang2, ''))
             ])
             item.addChild(child_item)
 
         return item
 
     @staticmethod
-    def _extract_text(contents) -> str:
+    def _extract_text(contents: str) -> str:
         """
         Joins a list of content into a single string.
 
@@ -133,41 +195,26 @@ class TableManager:
 
         if not contents:
             return ''
-        return re.sub(pattern=r'\n(?!\\\\)', repl='➚', string=contents)
+        return re.sub(pattern=FluentAPI.RE_LINE_SPLIT_PATTERN, repl='➚', string=contents)
 
     @staticmethod
-    def _process_attributes(data, lang1, lang2) -> dict:
+    def aggregate_attributes(languages: LanguagesType, langs: Iterable[str]) -> defaultdict[str, dict]:
         """
-        Processes attributes for both languages.
+        Aggregate attributes for languages.
 
-        :param data: The data containing attributes.
-        :param lang1: The first language code.
-        :param lang2: The second language code.
+        :param languages: The data containing attributes.
+        :param langs: Languages code.
         :return: A dictionary of attributes with their translations.
         """
-        attributes = {}
-        for lang in (lang1, lang2):
-            lang_data = data[lang]
+        attributes = defaultdict(lambda: defaultdict(str))
+
+        for lang in langs:
+            lang_data = languages[lang]
             if lang_data and lang_data.attributes:
                 for name, attr_value in lang_data.attributes.items():
-                    attributes.setdefault(name, {}).update({
-                        lang: attr_value or []
-                    })
+                    attributes[name][lang] = attr_value or ''
+
         return attributes
-
-    def _get_selection(self) -> tuple[str, str] | tuple[str, None] | tuple[None, None]:
-        """
-        Remembers the currently selected item.
-
-        :return: A tuple containing the selected variable and attribute.
-        """
-        current_item = self.table_widget.currentItem()
-        if current_item:
-            parent = current_item.parent()
-            if parent:
-                return parent.text(self.COLUMN_VARIABLE), current_item.text(self.COLUMN_VARIABLE)
-            return current_item.text(self.COLUMN_VARIABLE), None
-        return None, None
 
     def _restore_selection(self, variable: str, attribute: str):
         """
@@ -178,29 +225,58 @@ class TableManager:
         """
         if not variable:
             return
-        for i in range(self.table_widget.topLevelItemCount()):
-            parent_item = self.table_widget.topLevelItem(i)
+
+        for i in range(self.table.topLevelItemCount()):
+            parent_item = self.table.topLevelItem(i)
             if parent_item.text(self.COLUMN_VARIABLE) == variable:
-                self.table_widget.setCurrentItem(parent_item)
+                self.table.setCurrentItem(parent_item)
                 if attribute:
                     for j in range(parent_item.childCount()):
                         child_item = parent_item.child(j)
                         if child_item.text(self.COLUMN_VARIABLE) == attribute:
-                            self.table_widget.setCurrentItem(child_item)
+                            self.table.setCurrentItem(child_item)
                             return
                 return
+            
+    def set_headers(self, lang1: Optional[str] = None, lang2: Optional[str] = None):
+        """
+        Sets the headers of the table, optionally including language codes.
 
-    def get_variable(self) -> tuple[str, str] | tuple[str, None] | tuple[None, None]:
+        :param lang1: The first language code.
+        :param lang2: The second language code.
+        """
+
+        lang1_name = 'Translation 1'
+        if lang1 is not None:
+            lang1_name += f' — {lang1}'
+
+        lang2_name = 'Translation 2'
+        if lang2 is not None:
+            lang2_name += f' — {lang2}'
+
+        headers = ['', 'Variable', lang1_name, lang2_name]
+        self.table.setHeaderLabels(headers)
+
+    def get_item(self) -> tuple[QTreeWidgetItem | None, QTreeWidgetItem | None]:
+        """
+        Retrieves the selected item.
+
+        :return: The selected QTreeWidgetItem or None.
+        """
+        selected_items = self.table.currentItem()
+        if selected_items:
+            item = selected_items
+            parent = item.parent()
+            if parent:
+                return parent, item
+            return item, None
+        return None, None
+
+    def get_variable(self) -> tuple[str | None, str | None]:
         """
         Retrieves the selected variable and attribute.
 
         :return: A tuple containing the selected variable and attribute.
         """
-        selected_items = self.table_widget.selectedItems()
-        if selected_items:
-            item = selected_items[0]
-            parent = item.parent()
-            if parent:
-                return parent.text(self.COLUMN_VARIABLE), item.text(self.COLUMN_VARIABLE)
-            return item.text(self.COLUMN_VARIABLE), None
-        return None, None
+        parent, item = self.get_item()
+        return parent.text(self.COLUMN_VARIABLE) if parent else None, item.text(self.COLUMN_VARIABLE) if item else None
