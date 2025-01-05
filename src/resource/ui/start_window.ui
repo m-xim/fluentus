@@ -49,7 +49,7 @@ font-weight: bold;</string>
 font-weight: middle;</string>
       </property>
       <property name="text">
-       <string>Super editor fluent localization files</string>
+       <string>Powerful tool designed to edit the Fluent localization files</string>
       </property>
      </widget>
     </item>
