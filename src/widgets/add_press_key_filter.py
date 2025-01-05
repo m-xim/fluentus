@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, QEvent, Qt
+from PyQt6.QtCore import QObject, QEvent
 
 
 class KeyPressFilter(QObject):

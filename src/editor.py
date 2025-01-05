@@ -104,19 +104,19 @@ class FluentusEditor(QWidget):
         self.lang_2.setCurrentIndex(1 if len(languages) >= 2 else 0)
 
     def set_current_item(self):
-        lang_1, lang_2 = self.lang_1.currentText(), self.lang_2.currentText()
-        if not lang_1 or not lang_2:
+        lang1, lang2 = self.lang_1.currentText(), self.lang_2.currentText()
+        if not lang1 or not lang2:
             return
 
-        self.table_manager.set_current_item(lang_1, lang_2)
+        self.table_manager.set_current_item(lang1, lang2)
 
     def load_table(self):
         """Update the table based on selected languages."""
-        lang_1, lang_2 = self.lang_1.currentText(), self.lang_2.currentText()
-        if not lang_1 or not lang_2:
+        lang1, lang2 = self.lang_1.currentText(), self.lang_2.currentText()
+        if not lang1 or not lang2:
             return
 
-        self.table_manager.populate_table(lang_1, lang_2)
+        self.table_manager.populate_table(lang1, lang2)
 
     def load_variable(self):
         variable, attribute = self.table_manager.get_variable()
@@ -132,7 +132,7 @@ class FluentusEditor(QWidget):
             data = self.fluent_api.get_translation(variable, language)
 
             if attribute and field == 'value':
-                content = data.attributes.get(attribute, '')
+                content = data.attributes[attribute]
             else:
                 content = getattr(data, field, None)
 
