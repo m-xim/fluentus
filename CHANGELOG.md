@@ -1,3 +1,10 @@
+# [1.2.0-dev.1](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.3...v1.2.0-dev.1) (2025-01-07)
+
+
+### Features
+
+* **table:** display all translations in the table ([41e2670](https://github.com/m-xim/fluentus/commit/41e26708bbdc5260984a8dca855b7c565a3676e1))
+
 ## [1.1.1-dev.3](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.2...v1.1.1-dev.3) (2025-01-07)
 
 
