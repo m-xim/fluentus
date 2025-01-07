@@ -20,15 +20,15 @@ class FluentAPI:
     RE_NEWLINE_PATTERN = re.compile(r'\n(?!\\\\) ')
     RE_LINE_SPLIT_PATTERN = re.compile(r'\n(?!\\\\)')
     RE_SEARCH_WHITESPACE = re.compile(r'(\s+)$')
-    
-    def __init__(self, folder_path: Optional[str] = None):
-        self.config = get_config(FtlFieldConfig, root_key='ftl_field')
+    RE_SUB_IN_JUNK = re.compile(r'\n(?!\\\\)\s\s\s\s')
+
+    def __init__(self, folder_path: Optional[str]):
+        self.config: FtlFieldConfig = get_config(FtlFieldConfig, root_key='ftl_field')
         self.bundles = defaultdict(list)  # Dictionary to store paths to .ftl files by language
         self.translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))
 
         self.folder_path = folder_path
-        if self.folder_path is not None:
-            self.load_ftl_files(folder_path=folder_path)
+        self._load_ftl_files(folder_path=folder_path)
 
         self.edited: bool = False
 
@@ -69,7 +69,7 @@ class FluentAPI:
         # Determine if there's a value to update
         if value or value in {False, 0}:
             if field in {'value', 'attributes'}:
-                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, '\n ', value)
+                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, '\n', value)
                 beautiful_value, exist_junk = self.elements_to_beautiful_str(sanitized_value)
 
                 if exist_junk:
@@ -155,13 +155,13 @@ class FluentAPI:
                 try:
                     attr_value = self.elements_to_str(attr.value.elements)
                 except Exception as e:
-                    attr_value = []
+                    attr_value = ''
                     logger.error(f"Error parsing attribute '{attr.id.name}' in {filepath or 'unknown'}: {e}")
                 attributes[f'.{attr.id.name}'] = attr_value
 
         # Parse value
         value = self.elements_to_str(entry.value.elements) if entry.value else ''
-        
+
         return Translation(value=value, attributes=attributes, comment=comment, check=check, filepath=filepath)
 
     def _parse_comment(self, comment: Optional[Comment]) -> tuple[Optional[str], bool]:
@@ -200,7 +200,7 @@ class FluentAPI:
         if isinstance(element, TextElement):
             return element.value
         if isinstance(element, Junk):
-            return element.content.removeprefix('variable = ')
+            return element.content.removeprefix('variable =').strip()
         if isinstance(element, Placeable):
             return serialize_placeable(element)
         raise Exception('Unknown element type: {}'.format(type(element)))
@@ -211,11 +211,13 @@ class FluentAPI:
 
     @staticmethod
     def parse_str_to_ast(value: str) -> list[TextElement | Placeable]:
-        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, '\n ', value)
-        parsed = FluentParser(with_spans=False).parse_entry(f"variable = {sanitized_value}")
+        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, '\n    ', value)
+        parsed = FluentParser(with_spans=False).parse_entry("variable ="
+                                                            f"\n    {sanitized_value}")
         if isinstance(parsed, Junk):
             logger.warning(f'Junk: {parsed}')
-            return [TextElement(value=parsed.content.removeprefix('variable = ').strip())]
+            value = re.sub(FluentAPI.RE_SUB_IN_JUNK, '\n', (parsed.content.removeprefix('variable =').strip()))
+            return [TextElement(value=value)]
         return parsed.value.elements
 
     @staticmethod
@@ -272,7 +274,9 @@ class FluentAPI:
             ast_value = Pattern(elements=self.parse_str_to_ast(translation_data.value))
         return Message(id=Identifier(name=name), value=ast_value, attributes=attributes, comment=comment_ast)
 
-    def load_ftl_files(self, folder_path: str) -> None:
+    def _load_ftl_files(self, folder_path: str) -> None:
+        # TODO: add a check for .ftl files
+
         self.folder_path = folder_path
 
         for lang_folder in filter(lambda d: os.path.isdir(os.path.join(folder_path, d)), os.listdir(folder_path)):
@@ -286,8 +290,8 @@ class FluentAPI:
             with open(ftl_path, 'r', encoding='utf-8') as file:
                 resource = parse(file.read())
 
-                self.parse_fluent_ast(resource, lang_folder=lang_folder, filepath=ftl_path)
-                self.bundles[lang_folder].append(ftl_path)
+            self.parse_fluent_ast(resource, lang_folder=lang_folder, filepath=ftl_path)
+            self.bundles[lang_folder].append(ftl_path)
         except Exception as e:
             logger.error(f"Error loading file {ftl_path}: {e}")
 
