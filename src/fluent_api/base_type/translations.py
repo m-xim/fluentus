@@ -20,6 +20,3 @@ Translation.model_rebuild()
 
 LanguagesType = DefaultDict[str, Translation]
 TranslationsType = DefaultDict[str, LanguagesType]
-
-Languages: LanguagesType = defaultdict(Translation)
-Translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))

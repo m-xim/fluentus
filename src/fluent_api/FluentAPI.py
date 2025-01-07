@@ -11,7 +11,7 @@ from fluent.syntax.serializer import serialize_placeable
 from loguru import logger
 
 from src.fluent_api.base_type.elements import elements_type
-from src.fluent_api.base_type.translations import Translation, Translations, TranslationsType
+from src.fluent_api.base_type.translations import Translation, TranslationsType
 from src.fluent_api.utils.bool_and_string import string_bool, bool_to_string
 from src.utils.config_reader import get_config, FtlFieldConfig
 
@@ -24,7 +24,7 @@ class FluentAPI:
     def __init__(self, folder_path: Optional[str] = None):
         self.config = get_config(FtlFieldConfig, root_key='ftl_field')
         self.bundles = defaultdict(list)  # Dictionary to store paths to .ftl files by language
-        self.translations = Translations
+        self.translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))
 
         self.folder_path = folder_path
         if self.folder_path is not None:
