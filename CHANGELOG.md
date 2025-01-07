@@ -1,3 +1,10 @@
+## [1.1.1-dev.3](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.2...v1.1.1-dev.3) (2025-01-07)
+
+
+### Bug Fixes
+
+* **api:** ensure translations are properly cleared ([1514859](https://github.com/m-xim/fluentus/commit/1514859fe6b7be5affd08874f85c6159f7b514b6))
+
 ## [1.1.1-dev.2](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.1...v1.1.1-dev.2) (2025-01-05)
 
 
