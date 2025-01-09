@@ -1,3 +1,10 @@
+# [1.2.0-dev.2](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2025-01-09)
+
+
+### Bug Fixes
+
+* **table_manager:** change dict to defaultdict ([4798cdd](https://github.com/m-xim/fluentus/commit/4798cddfdda5e7e5857566dab3da6ed8f39552e1))
+
 # [1.2.0-dev.1](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.3...v1.2.0-dev.1) (2025-01-07)
 
 
