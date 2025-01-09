@@ -113,27 +113,33 @@ class FluentAPI:
         return False
 
     def parse_fluent_ast(
-            self, resource: Resource, lang_folder: Optional[str] = None, filepath: Optional[str] = None
+            self, resource: Resource, lang_folder: Optional[str] = None, filepath: Optional[Path] = None
     ) -> TranslationsType:
+        """
+        Parses a Fluent AST and updates the internal translations cache.
+
+        Args:
+            resource (Resource): The Fluent AST resource.
+            lang_folder (Optional[str]): The language code (locale folder).
+            filepath (Optional[Path]): The file path of the translation file.
+
+        Returns:
+            TranslationsType: The updated translations cache.
+        """
         for entry in resource.body:
-            if isinstance(entry, Message):
-                self._parse_message_or_term(entry, lang_folder, filepath)
-            elif isinstance(entry, Term):
-                self._parse_message_or_term(entry, lang_folder, filepath, is_term=True)
+            if isinstance(entry, (Message, Term)):
+                var_name = f"-{entry.id.name}" if isinstance(entry, Term) else entry.id.name
+
+                try:
+                    self.translations[var_name][lang_folder] = self.parse_message(entry, filepath=filepath)
+                except Exception as e:
+                    logger.error(f"Error parsing {type(entry)} '{entry.id.name}': {e}")
             else:
                 logger.warning(f"Unsupported entry type: {type(entry)}")
+
         return self.translations
 
-    def _parse_message_or_term(
-            self, entry: Union[Message, Term], lang_folder: str, filepath: str, is_term: Optional[bool] = False
-    ):
-        try:
-            var_name = f"-{entry.id.name}" if is_term else entry.id.name
-            self.translations[var_name][lang_folder] = self.parse_message(entry, filepath=filepath)
-        except Exception as e:
-            logger.error(f"Error parsing {'term' if is_term else 'message'} '{entry.id.name}': {e}")
-
-    def parse_message(self, entry: Union[Message, Term], filepath: Optional[str] = None) -> Translation:
+    def parse_message(self, entry: Union[Message, Term], filepath: Optional[Path] = None) -> Translation:
         """
             Parses a message or term and returns a Translation object.
 
