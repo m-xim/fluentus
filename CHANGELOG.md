@@ -1,3 +1,10 @@
+# [1.2.0-dev.4](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2025-01-09)
+
+
+### Bug Fixes
+
+* **fluent_api:** replace `fluent.runtime` error handling with ParseError from `fluent.syntax` ([51b2be3](https://github.com/m-xim/fluentus/commit/51b2be3a3ef9014872fa2b36dd24459bcfc498d0))
+
 # [1.2.0-dev.3](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2025-01-09)
 
 
