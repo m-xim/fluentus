@@ -9,3 +9,8 @@ projects = "projects"
 
 [ftl_field]
 check = "check"
+
+[table_column]
+icon = ""
+variable = "Variable"
+translation = "Translation"

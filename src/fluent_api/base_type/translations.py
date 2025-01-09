@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 from typing import Optional, DefaultDict
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -9,7 +10,7 @@ class Translation(BaseModel):
     attributes: DefaultDict[str, str] = Field(default_factory=lambda: defaultdict(str))
     comment: Optional[str] = None
     check: bool = False
-    filepath: Optional[str] = None
+    filepath: Optional[Path] = None
 
     model_config = ConfigDict(validate_assignment=True, arbitrary_types_allowed=True)
 
@@ -20,6 +21,3 @@ Translation.model_rebuild()
 
 LanguagesType = DefaultDict[str, Translation]
 TranslationsType = DefaultDict[str, LanguagesType]
-
-Languages: LanguagesType = defaultdict(Translation)
-Translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))

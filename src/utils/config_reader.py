@@ -26,6 +26,12 @@ class FtlFieldConfig(BaseModel):
     check: str
 
 
+class TableColumn(BaseModel):
+    icon: str
+    variable: str
+    translation: str
+
+
 @lru_cache
 def parse_config_file() -> dict:
     file_path = resource_path("config.toml")

@@ -20,7 +20,8 @@ class FluentusEditor(QWidget):
         super().__init__()
 
         self.window_editor = None
-        self.fluent_api = FluentAPI()
+        self.fluent_api = None
+        self.table_manager = None
 
         # Load UI
         uic.loadUi(resource_path('resource/ui/editor_window.ui'), self)
@@ -45,9 +46,6 @@ class FluentusEditor(QWidget):
         self.lang_1.activated.connect(self.on_language_changed)
         self.lang_2.activated.connect(self.on_language_changed)
 
-        # Initialize table manager
-        self.table_manager = TableManager(self.table, self.fluent_api, self.load_variable)
-
         # Connect save button
         self.save_button.clicked.connect(self.save_all_changes)
 
@@ -64,17 +62,20 @@ class FluentusEditor(QWidget):
 
     def on_language_changed(self) -> None:
         """Handle language selection changes."""
-        # TODO: Instead of creating a new table, update the current ones
-        self.load_table()
         self.load_variable()
 
     def _initialize_folder(self, folder: str) -> None:
         """Initializes the editor with a specified folder."""
-        self.fluent_api.load_ftl_files(folder)
+        self.fluent_api = FluentAPI(folder)
+
+        # Initialize table manager
+        self.table_manager = TableManager(self.table, self.fluent_api, self.load_variable)
+
         self.folder_text.setText(folder)
         self.refresh_editing_state()
         self.set_language_selectors()
-        self.load_table()
+
+        self.table_manager.populate_table()
 
     def save_all_changes(self):
         """Save all changes and notify the user."""
@@ -103,29 +104,15 @@ class FluentusEditor(QWidget):
         self.lang_1.setCurrentIndex(0)
         self.lang_2.setCurrentIndex(1 if len(languages) >= 2 else 0)
 
-    def set_current_item(self):
-        lang1, lang2 = self.lang_1.currentText(), self.lang_2.currentText()
-        if not lang1 or not lang2:
-            return
-
-        self.table_manager.set_current_item(lang1, lang2)
-
     def load_table(self):
         """Update the table based on selected languages."""
-        lang1, lang2 = self.lang_1.currentText(), self.lang_2.currentText()
-        if not lang1 or not lang2:
-            return
 
-        self.table_manager.populate_table(lang1, lang2)
+        self.table_manager.populate_table()
 
     def load_variable(self):
-        variable, attribute = self.table_manager.get_variable()
+        variable, attribute = self.table_manager.get_selected_names()
         if not variable:
             return
-
-        selected_items = self.table.selectedItems()
-        if selected_items:
-            self.table_manager.current_item = selected_items[0]
 
         for editor, field, lang in self.editors:
             language = lang.currentText()
@@ -175,14 +162,14 @@ class FluentusEditor(QWidget):
     def update_cache(self, editor: Union[QPlainTextEdit, QCheckBox], field: str, lang: QComboBox):
         """Update the cache when an editor field is modified."""
 
-        variable, attribute = self.table_manager.get_variable()
+        variable, attribute = self.table_manager.get_selected_names()
         if not variable:
             return
 
         new_content = editor.toPlainText() if isinstance(editor, QPlainTextEdit) else editor.isChecked()
 
         if self.fluent_api.update(variable, lang.currentText(), field, new_content, attribute):
-            self.set_current_item()
+            self.table_manager.set_current_item(lang.currentText())
 
         self.load_variable()
 

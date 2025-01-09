@@ -1,17 +1,16 @@
-import os
 import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Union, List, Any, Set, Optional, DefaultDict
 
-from fluent.syntax import parse, serialize, FluentParser
+from fluent.syntax import parse, serialize, FluentParser, ParseError
 from fluent.syntax.ast import (Resource, TextElement, Placeable, Junk, Message, Term, Comment, PatternElement,
                                Attribute, Identifier, Pattern)
 from fluent.syntax.serializer import serialize_placeable
 from loguru import logger
 
 from src.fluent_api.base_type.elements import elements_type
-from src.fluent_api.base_type.translations import Translation, Translations, TranslationsType
+from src.fluent_api.base_type.translations import Translation, TranslationsType
 from src.fluent_api.utils.bool_and_string import string_bool, bool_to_string
 from src.utils.config_reader import get_config, FtlFieldConfig
 
@@ -20,17 +19,17 @@ class FluentAPI:
     RE_NEWLINE_PATTERN = re.compile(r'\n(?!\\\\) ')
     RE_LINE_SPLIT_PATTERN = re.compile(r'\n(?!\\\\)')
     RE_SEARCH_WHITESPACE = re.compile(r'(\s+)$')
-    
-    def __init__(self, folder_path: Optional[str] = None):
-        self.config = get_config(FtlFieldConfig, root_key='ftl_field')
-        self.bundles = defaultdict(list)  # Dictionary to store paths to .ftl files by language
-        self.translations = Translations
+    RE_SUB_IN_JUNK = re.compile(r'\n(?!\\\\)\s\s\s\s')
 
-        self.folder_path = folder_path
-        if self.folder_path is not None:
-            self.load_ftl_files(folder_path=folder_path)
+    def __init__(self, folder_path: Optional[Path | str]):
+        self.config: FtlFieldConfig = get_config(FtlFieldConfig, root_key='ftl_field')
+        self.bundles = defaultdict(list)  # Dictionary to store paths to .ftl files by language
+        self.translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))
 
         self.edited: bool = False
+
+        self.folder_path = folder_path
+        self._load_files(locales_path=folder_path)
 
     def get_languages(self) -> List[str]:
         """Return a list of all loaded languages."""
@@ -67,9 +66,10 @@ class FluentAPI:
             raise KeyError(error_message) from e
 
         # Determine if there's a value to update
-        if value or value in {False, 0}:
+        # if value or value in {False, 0}: # TODO: need tests
+        if value is not None:
             if field in {'value', 'attributes'}:
-                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, '\n ', value)
+                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, '\n', value)
                 beautiful_value, exist_junk = self.elements_to_beautiful_str(sanitized_value)
 
                 if exist_junk:
@@ -113,27 +113,33 @@ class FluentAPI:
         return False
 
     def parse_fluent_ast(
-            self, resource: Resource, lang_folder: Optional[str] = None, filepath: Optional[str] = None
+            self, resource: Resource, lang_folder: Optional[str] = None, filepath: Optional[Path] = None
     ) -> TranslationsType:
+        """
+        Parses a Fluent AST and updates the internal translations cache.
+
+        Args:
+            resource (Resource): The Fluent AST resource.
+            lang_folder (Optional[str]): The language code (locale folder).
+            filepath (Optional[Path]): The file path of the translation file.
+
+        Returns:
+            TranslationsType: The updated translations cache.
+        """
         for entry in resource.body:
-            if isinstance(entry, Message):
-                self._parse_message_or_term(entry, lang_folder, filepath)
-            elif isinstance(entry, Term):
-                self._parse_message_or_term(entry, lang_folder, filepath, is_term=True)
+            if isinstance(entry, (Message, Term)):
+                var_name = f"-{entry.id.name}" if isinstance(entry, Term) else entry.id.name
+
+                try:
+                    self.translations[var_name][lang_folder] = self.parse_message(entry, filepath=filepath)
+                except Exception as e:
+                    logger.error(f"Error parsing {type(entry)} '{entry.id.name}': {e}")
             else:
                 logger.warning(f"Unsupported entry type: {type(entry)}")
+
         return self.translations
 
-    def _parse_message_or_term(
-            self, entry: Union[Message, Term], lang_folder: str, filepath: str, is_term: Optional[bool] = False
-    ):
-        try:
-            var_name = f"-{entry.id.name}" if is_term else entry.id.name
-            self.translations[var_name][lang_folder] = self.parse_message(entry, filepath=filepath)
-        except Exception as e:
-            logger.error(f"Error parsing {'term' if is_term else 'message'} '{entry.id.name}': {e}")
-
-    def parse_message(self, entry: Union[Message, Term], filepath: Optional[str] = None) -> Translation:
+    def parse_message(self, entry: Union[Message, Term], filepath: Optional[Path] = None) -> Translation:
         """
             Parses a message or term and returns a Translation object.
 
@@ -155,13 +161,13 @@ class FluentAPI:
                 try:
                     attr_value = self.elements_to_str(attr.value.elements)
                 except Exception as e:
-                    attr_value = []
+                    attr_value = ''
                     logger.error(f"Error parsing attribute '{attr.id.name}' in {filepath or 'unknown'}: {e}")
                 attributes[f'.{attr.id.name}'] = attr_value
 
         # Parse value
         value = self.elements_to_str(entry.value.elements) if entry.value else ''
-        
+
         return Translation(value=value, attributes=attributes, comment=comment, check=check, filepath=filepath)
 
     def _parse_comment(self, comment: Optional[Comment]) -> tuple[Optional[str], bool]:
@@ -200,7 +206,7 @@ class FluentAPI:
         if isinstance(element, TextElement):
             return element.value
         if isinstance(element, Junk):
-            return element.content.removeprefix('variable = ')
+            return element.content.removeprefix('variable =').strip()
         if isinstance(element, Placeable):
             return serialize_placeable(element)
         raise Exception('Unknown element type: {}'.format(type(element)))
@@ -211,11 +217,13 @@ class FluentAPI:
 
     @staticmethod
     def parse_str_to_ast(value: str) -> list[TextElement | Placeable]:
-        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, '\n ', value)
-        parsed = FluentParser(with_spans=False).parse_entry(f"variable = {sanitized_value}")
+        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, '\n    ', value)
+        parsed = FluentParser(with_spans=False).parse_entry("variable ="
+                                                            f"\n    {sanitized_value}")
         if isinstance(parsed, Junk):
             logger.warning(f'Junk: {parsed}')
-            return [TextElement(value=parsed.content.removeprefix('variable = ').strip())]
+            value = re.sub(FluentAPI.RE_SUB_IN_JUNK, '\n', (parsed.content.removeprefix('variable =').strip()))
+            return [TextElement(value=value)]
         return parsed.value.elements
 
     @staticmethod
@@ -272,27 +280,60 @@ class FluentAPI:
             ast_value = Pattern(elements=self.parse_str_to_ast(translation_data.value))
         return Message(id=Identifier(name=name), value=ast_value, attributes=attributes, comment=comment_ast)
 
-    def load_ftl_files(self, folder_path: str) -> None:
-        self.folder_path = folder_path
+    def _load_files(self, locales_path: Union[str, Path], ext: str = ".ftl", encoding: str = "utf-8") -> None:
+        """
+        Traverses the locales directory, finds all .ftl files, and loads them as FluentResource.
 
-        for lang_folder in filter(lambda d: os.path.isdir(os.path.join(folder_path, d)), os.listdir(folder_path)):
-            lang_path = os.path.join(folder_path, lang_folder)
-            for file_name in filter(lambda f: f.endswith(".ftl"), os.listdir(lang_path)):
-                file_path = os.path.join(lang_path, file_name)
-                self._load_single_file(file_path, lang_folder)
+        :param locales_path: Path to the locales directory.
+        :param ext: Translation file extension (default ".ftl").
+        :param encoding: Encoding of the translation files (default "utf-8").
+        :return: None. Populates self.bundles with locales as keys and lists of FluentResource as values.
+        :raises FileNotFoundError: If the locales directory does not exist.
+        :raises ValueError: If no locales or .ftl files are found for a locale.
+        :raises FluentFormatError: If a syntax error occurs while parsing a .ftl file.
+        :raises RuntimeError: If a file cannot be read.
+        """
+        locales_path = Path(locales_path)
 
-    def _load_single_file(self, ftl_path: str, lang_folder: str) -> None:
-        try:
-            with open(ftl_path, 'r', encoding='utf-8') as file:
-                resource = parse(file.read())
+        if not locales_path.is_dir():
+            logger.error("Locales directory '{locales_path}' does not exist or is not a directory.")
+            raise FileNotFoundError(f"Locales directory '{locales_path}' does not exist or is not a directory.")
 
-                self.parse_fluent_ast(resource, lang_folder=lang_folder, filepath=ftl_path)
-                self.bundles[lang_folder].append(ftl_path)
-        except Exception as e:
-            logger.error(f"Error loading file {ftl_path}: {e}")
+        # Extract locales (names of subdirectories)
+        locales = [item.name for item in locales_path.iterdir() if item.is_dir()]
+
+        if not locales:
+            logger.error("No locales found in directory '%s'.", locales_path)
+            raise ValueError(f"No locales found in directory '{locales_path}'.")
+
+        for locale in locales:
+            locale_dir = locales_path / locale
+            ftl_files = list(locale_dir.rglob(f"*{ext}"))
+
+            if not ftl_files:
+                logger.warning(f"No '{ext}' files found in locale directory '{locale_dir}'.")
+                raise ValueError(f"No '{ext}' files found in locale directory '{locale_dir}'.")
+
+            for ftl_file in ftl_files:
+                try:
+                    content = ftl_file.read_text(encoding=encoding)
+                    resource = parse(content)
+                    self.parse_fluent_ast(
+                        resource=resource,
+                        lang_folder=locale,
+                        filepath=ftl_file.relative_to(locales_path)
+                    )
+                    self.bundles[locale].append(resource)
+                    logger.debug(f"Loaded resource from file '{ftl_file}' for locale '{locale}'.")
+                except ParseError as e:
+                    logger.error(f"Parse error in file '{ftl_file}': {e}")
+                    raise ParseError(f"Parse error in file '{ftl_file}': {e}") from e
+                except Exception as e:
+                    logger.error("Failed to read file '%s': %s", ftl_file, e)
+                    raise RuntimeError(f"Failed to read file '{ftl_file}': {e}") from e
 
     def save_all_files(self, target_folder: Optional[str] = None):
-        file_content_map: DefaultDict[str, List[Message | Term]] = defaultdict(list)
+        file_content_map: DefaultDict[Path, List[Message | Term]] = defaultdict(list)
 
         for variable_name, translations_by_lang in self.translations.items():
             for language, translation_data in translations_by_lang.items():
@@ -301,10 +342,7 @@ class FluentAPI:
                     raise ValueError(f"Filepath is missing for language '{language}', variable '{variable_name}'")
 
                 # Determine the output filepath
-                output_filepath = (
-                    translation_data.filepath.replace(self.folder_path, target_folder)
-                    if target_folder else translation_data.filepath
-                )
+                output_filepath = (target_folder or self.folder_path) / translation_data.filepath
 
                 # Generate translation AST and append to the file content map
                 file_content_map[output_filepath].append(
