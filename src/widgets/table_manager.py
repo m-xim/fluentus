@@ -231,7 +231,7 @@ class TableManager:
         :param languages: Iterable of language codes.
         :return: A dictionary of attributes with their translations.
         """
-        attributes = defaultdict(dict)
+        attributes = defaultdict(lambda: defaultdict(str))
 
         for language_code in languages:
             language_data = translations[language_code]
