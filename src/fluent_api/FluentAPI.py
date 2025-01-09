@@ -3,8 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Union, List, Any, Set, Optional, DefaultDict
 
-from fluent.runtime.errors import FluentFormatError
-from fluent.syntax import parse, serialize, FluentParser
+from fluent.syntax import parse, serialize, FluentParser, ParseError
 from fluent.syntax.ast import (Resource, TextElement, Placeable, Junk, Message, Term, Comment, PatternElement,
                                Attribute, Identifier, Pattern)
 from fluent.syntax.serializer import serialize_placeable
@@ -326,9 +325,9 @@ class FluentAPI:
                     )
                     self.bundles[locale].append(resource)
                     logger.debug(f"Loaded resource from file '{ftl_file}' for locale '{locale}'.")
-                except FluentFormatError as e:
-                    logger.error(f"Syntax error in file '{ftl_file}': {e}")
-                    raise FluentFormatError(f"Syntax error in file '{ftl_file}': {e}") from e
+                except ParseError as e:
+                    logger.error(f"Parse error in file '{ftl_file}': {e}")
+                    raise ParseError(f"Parse error in file '{ftl_file}': {e}") from e
                 except Exception as e:
                     logger.error("Failed to read file '%s': %s", ftl_file, e)
                     raise RuntimeError(f"Failed to read file '{ftl_file}': {e}") from e
