@@ -1,3 +1,10 @@
+# [1.2.0-dev.3](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2025-01-09)
+
+
+### Bug Fixes
+
+* **fluent_api:** enable uploading of files from subdirectories ([d25ad11](https://github.com/m-xim/fluentus/commit/d25ad11cd54f66dbb4391ee2c10a5998ad2c47f9))
+
 # [1.2.0-dev.2](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2025-01-09)
 
 
