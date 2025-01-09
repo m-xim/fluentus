@@ -25,6 +25,15 @@
 ### Bug Fixes
 
 * **api:** ensure translations are properly cleared ([1514859](https://github.com/m-xim/fluentus/commit/1514859fe6b7be5affd08874f85c6159f7b514b6))
+* **editor:** cursor position ([2f8f078](https://github.com/m-xim/fluentus/commit/2f8f078735e05b9f19ef48df33d0bd3354468b67))
+* **fluent_api:** fix whitespace (\n,\s,\t,...) characters at end of text, refactor code and add translation types ([9de7e6d](https://github.com/m-xim/fluentus/commit/9de7e6d12889ab43db7d4383599e40b71b67c1fb))
+
+## [1.1.1](https://github.com/m-xim/fluentus/compare/v1.1.0...v1.1.1) (2025-01-05)
+
+
+### Bug Fixes
+
+* **fluent_api:** enable uploading of files from subdirectories ([d25ad11](https://github.com/m-xim/fluentus/commit/d25ad11cd54f66dbb4391ee2c10a5998ad2c47f9))
 
 ## [1.1.1-dev.2](https://github.com/m-xim/fluentus/compare/v1.1.1-dev.1...v1.1.1-dev.2) (2025-01-05)
 
