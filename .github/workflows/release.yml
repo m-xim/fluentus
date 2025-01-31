@@ -25,6 +25,8 @@ jobs:
 
       - name: Run semantic-release dry-run
         id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npx semantic-release --dry-run > semantic-release.log 2>&1 || true
           if grep -q "There are no relevant changes, so no new version is released." semantic-release.log; then
