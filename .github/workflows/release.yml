@@ -27,8 +27,8 @@ jobs:
         id: check
         run: |
           npx semantic-release --dry-run > semantic-release.log 2>&1 || true
-          if grep -q "No releasable commits" semantic-release.log; then
-            echo "No new release will be generated."
+          if grep -q "There are no relevant changes, so no new version is released." semantic-release.log; then
+            echo "There are no relevant changes, so no new version is released."
             echo "should_build=false" >> $GITHUB_OUTPUT
           else
             echo "New release detected."
