@@ -1,3 +1,10 @@
+# [1.2.0-dev.5](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2025-02-01)
+
+
+### Features
+
+* **start_window:** implement drag-and-drop project creation ([b2ff4e0](https://github.com/m-xim/fluentus/commit/b2ff4e06805c45c386d8d0315e1acc0971f2b123))
+
 # [1.2.0-dev.4](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2025-01-09)
 
 
