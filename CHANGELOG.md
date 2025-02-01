@@ -1,3 +1,10 @@
+# [1.2.0-dev.6](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2025-02-01)
+
+
+### Features
+
+* **start_window:** add Delete key shortcut for removing selected projects ([e14421c](https://github.com/m-xim/fluentus/commit/e14421c7a5efda7e027c8df9d7875a21df9ca49b))
+
 # [1.2.0-dev.5](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2025-02-01)
 
 
