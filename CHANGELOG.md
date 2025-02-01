@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/m-xim/fluentus/compare/v1.2.0...v1.3.0) (2025-02-01)
+
+
+### Features
+
+* **start_window:** add Delete key shortcut for removing selected projects ([e14421c](https://github.com/m-xim/fluentus/commit/e14421c7a5efda7e027c8df9d7875a21df9ca49b))
+* **start_window:** implement drag-and-drop project creation ([b2ff4e0](https://github.com/m-xim/fluentus/commit/b2ff4e06805c45c386d8d0315e1acc0971f2b123))
+
 # [1.2.0-dev.6](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2025-02-01)
 
 
