@@ -3,7 +3,7 @@ import sys
 
 from PyQt6 import uic
 from PyQt6.QtCore import Qt, QModelIndex, QEvent
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QResizeEvent
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QResizeEvent, QShortcut
 from PyQt6.QtSql import QSqlTableModel
 from PyQt6.QtWidgets import QApplication, QMessageBox, QFileDialog, QMainWindow, QPushButton, QTableView
 from loguru import logger
@@ -67,6 +67,9 @@ class FluentusStart(QMainWindow):
         self.projects.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
         self.projects.doubleClicked.connect(self.open_editor)
 
+        shortcut_delete = QShortcut(Qt.Key.Key_Delete, self.projects)
+        shortcut_delete.activated.connect(lambda: self.delete_rows(self.model, self.projects))
+
         # Connect the "New Project" button click event
         self.new_project.clicked.connect(self.create_new_project)
 
@@ -111,6 +114,26 @@ class FluentusStart(QMainWindow):
 
         # Refresh the model to display the new record
         self.model.select()
+
+    @staticmethod
+    def delete_rows(model: QSqlTableModel, table_view: QTableView) -> None:
+        selected_indexes = table_view.selectionModel().selectedRows()
+        if not selected_indexes:
+            return
+
+        # Remove each row from the model
+        for index in selected_indexes:
+            model.removeRow(index.row())
+
+        if not model.submitAll():
+            QMessageBox.critical(
+                table_view,
+                "Deletion Error",
+                f"Unable to delete rows:"
+                f"\n{model.lastError().text()}"
+            )
+        else:
+            model.select()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         """
