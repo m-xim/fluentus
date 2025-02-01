@@ -7,7 +7,40 @@ on:
       - dev
 
 jobs:
+  release-check:
+    name: Check if new release is needed
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install semantic-release dependencies
+        run: |
+          npm install --save-dev semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/github @semantic-release/git
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Run semantic-release dry-run
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx semantic-release --dry-run > semantic-release.log 2>&1 || true
+          if grep -q "There are no relevant changes, so no new version is released." semantic-release.log; then
+            echo "There are no relevant changes, so no new version is released."
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "New release detected."
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    name: Build artifacts
+    needs: release-check
+    if: needs.release-check.outputs.should_build == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -24,7 +57,6 @@ jobs:
             extension: "-macOS"
             artifact_name: build-macos
             shell: bash
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -34,98 +66,93 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Dependencies and Build (Windows)
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r requirements.txt
+
+      - name: Build executable (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m venv venv
-          .\venv\Scripts\Activate.ps1
-          pip install pyinstaller
-          pip install -r requirements.txt
           if ($env:GITHUB_REF_NAME -eq "main") {
             pyinstaller main.spec
           } else {
             pyinstaller dev.spec
           }
-          New-Item -ItemType Directory -Force -Path release/windows-latest
-          Copy-Item dist\Fluentus.exe release\windows-latest\Fluentus${{ matrix.extension }}
-      - name: Install Dependencies and Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          python -m venv venv
-          source venv/bin/activate
-          pip install pyinstaller
-          pip install -r requirements.txt
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            pyinstaller main.spec
-          else
-            pyinstaller dev.spec
-          fi
-          chmod +x dist/Fluentus
-          mkdir -p release/ubuntu-latest
-          cp dist/Fluentus release/ubuntu-latest/Fluentus${{ matrix.extension }}
-      - name: Install Dependencies and Build (macOS)
-        if: matrix.os == 'macos-latest'
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          python -m venv venv
-          source venv/bin/activate
-          pip install pyinstaller
-          pip install -r requirements.txt
           
+          New-Item -ItemType Directory -Force -Path release/${{ matrix.os }}
+          Copy-Item -Path "dist\Fluentus.exe" -Destination "release\${{ matrix.os }}\Fluentus${{ matrix.extension }}"
+
+      - name: Build executable (Linux & macOS)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          # Определяем spec-файл в зависимости от ветки
           if [ "${{ github.ref_name }}" == "main" ]; then
             pyinstaller main.spec
           else
             pyinstaller dev.spec
           fi
+          
           chmod +x dist/Fluentus
-          mkdir -p release/macos-latest
-          cp dist/Fluentus release/macos-latest/Fluentus${{ matrix.extension }}
+
+          mkdir -p release/${{ matrix.os }}
+          cp dist/Fluentus release/${{ matrix.os }}/Fluentus${{ matrix.extension }}
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: release/${{ matrix.os }}/Fluentus${{ matrix.extension }}
+          path: |
+            release/${{ matrix.os }}/Fluentus${{ matrix.extension }}
 
   release:
+    name: Publish Release
     needs: build
+    if: needs.release-check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download build artifacts for Windows
+      - name: Download build artifact for Windows
         uses: actions/download-artifact@v4
         with:
           name: build-windows
           path: release/windows-latest/
 
-      - name: Download build artifacts for Ubuntu
+      - name: Download build artifact for Ubuntu
         uses: actions/download-artifact@v4
         with:
           name: build-ubuntu
           path: release/ubuntu-latest/
 
-      - name: Download build artifacts for macOS
+      - name: Download build artifact for macOS
         uses: actions/download-artifact@v4
         with:
           name: build-macos
           path: release/macos-latest/
 
-      - name: Install semantic-release
+      - name: Install semantic-release dependencies
         run: |
           npm install --save-dev semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/github @semantic-release/git
-      - name: Install Dependencies
+
+      - name: Install npm dependencies
         run: npm install
 
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

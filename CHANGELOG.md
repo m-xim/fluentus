@@ -1,17 +1,16 @@
-# [1.2.0](https://github.com/m-xim/fluentus/compare/v1.1.1...v1.2.0) (2025-01-09)
-
-
-### Bug Fixes
-
-* **api:** ensure translations are properly cleared ([1514859](https://github.com/m-xim/fluentus/commit/1514859fe6b7be5affd08874f85c6159f7b514b6))
-* **fluent_api:** enable uploading of files from subdirectories ([d25ad11](https://github.com/m-xim/fluentus/commit/d25ad11cd54f66dbb4391ee2c10a5998ad2c47f9))
-* **fluent_api:** replace `fluent.runtime` error handling with ParseError from `fluent.syntax` ([51b2be3](https://github.com/m-xim/fluentus/commit/51b2be3a3ef9014872fa2b36dd24459bcfc498d0))
-* **table_manager:** change dict to defaultdict ([4798cdd](https://github.com/m-xim/fluentus/commit/4798cddfdda5e7e5857566dab3da6ed8f39552e1))
+# [1.2.0-dev.6](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2025-02-01)
 
 
 ### Features
 
-* **table:** display all translations in the table ([41e2670](https://github.com/m-xim/fluentus/commit/41e26708bbdc5260984a8dca855b7c565a3676e1))
+* **start_window:** add Delete key shortcut for removing selected projects ([e14421c](https://github.com/m-xim/fluentus/commit/e14421c7a5efda7e027c8df9d7875a21df9ca49b))
+
+# [1.2.0-dev.5](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2025-02-01)
+
+
+### Features
+
+* **start_window:** implement drag-and-drop project creation ([b2ff4e0](https://github.com/m-xim/fluentus/commit/b2ff4e06805c45c386d8d0315e1acc0971f2b123))
 
 # [1.2.0-dev.4](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2025-01-09)
 

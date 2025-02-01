@@ -3,6 +3,7 @@
 [![Deployment Status](https://img.shields.io/github/actions/workflow/status/m-xim/fluentus/release.yml?branch=main&label=build%20main)](https://github.com/m-xim/fluentus/actions)
 [![Deployment Status](https://img.shields.io/github/actions/workflow/status/m-xim/fluentus/release.yml?branch=dev&label=build%20dev)](https://github.com/m-xim/fluentus/actions)
 [![GitHub License](https://img.shields.io/github/license/m-xim/fluentus)](https://github.com/m-xim/fluentus/blob/main/LICENSE)
+[![Supported Syntax Version](https://img.shields.io/badge/Syntax%20Version-Fluent%20v1.0-blue?logo=)](https://projectfluent.org/)
 
 [//]: # (## About)
 Fluentus is a powerful tool designed to edit the Fluent localization files from [Project Fluent](https://projectfluent.org)
