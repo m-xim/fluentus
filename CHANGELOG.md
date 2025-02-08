@@ -27,6 +27,9 @@
 * **FluentAPI:** remove debug prints ([d355745](https://github.com/m-xim/fluentus/commit/d3557456aece15a6314f332198b6bb8f2fb531f1))
 * **theme:** correct system operations display in light theme ([f6122ec](https://github.com/m-xim/fluentus/commit/f6122ec40b8aa0e93e95972c9123d5e275b76c68))
 
+# [1.3.0](https://github.com/m-xim/fluentus/compare/v1.2.0...v1.3.0) (2025-02-01)
+
+
 
 ### Features
 
