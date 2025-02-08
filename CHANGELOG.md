@@ -1,3 +1,17 @@
+# [1.3.0-dev.1](https://github.com/m-xim/fluentus/compare/v1.2.0...v1.3.0-dev.1) (2025-02-08)
+
+
+### Bug Fixes
+
+* **FluentAPI:** remove debug prints ([d355745](https://github.com/m-xim/fluentus/commit/d3557456aece15a6314f332198b6bb8f2fb531f1))
+* **theme:** correct system operations display in light theme ([f6122ec](https://github.com/m-xim/fluentus/commit/f6122ec40b8aa0e93e95972c9123d5e275b76c68))
+
+
+### Features
+
+* **start_window:** add Delete key shortcut for removing selected projects ([e14421c](https://github.com/m-xim/fluentus/commit/e14421c7a5efda7e027c8df9d7875a21df9ca49b))
+* **start_window:** implement drag-and-drop project creation ([b2ff4e0](https://github.com/m-xim/fluentus/commit/b2ff4e06805c45c386d8d0315e1acc0971f2b123))
+
 # [1.2.0-dev.6](https://github.com/m-xim/fluentus/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2025-02-01)
 
 
