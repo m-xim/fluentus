@@ -58,7 +58,9 @@ class DatabaseManager:
         if not db.open():
             error = db.lastError().text()
             logger.error(f"Failed to connect to the database: {error}")
-            QMessageBox.critical(None, "Database Error", f"Failed to connect to the database: {error}")
+            QMessageBox.critical(
+                None, "Database Error", f"Failed to connect to the database: {error}"
+            )
             return False
 
         logger.info("Database connection established.")
@@ -75,7 +77,9 @@ class DatabaseManager:
         query.prepare(f"SELECT COUNT(*) FROM {self.table_name} WHERE folder = :folder")
         query.bindValue(":folder", folder)
         if not query.exec():
-            logger.error(f"Failed to check project existence: {query.lastError().text()}")
+            logger.error(
+                f"Failed to check project existence: {query.lastError().text()}"
+            )
             return False
 
         if query.next():

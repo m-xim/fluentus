@@ -2,7 +2,8 @@ from functools import lru_cache
 from tomllib import load
 from typing import Type, TypeVar
 
-from pydantic import BaseModel
+from PyQt6.QtGui import QColor
+from pydantic import BaseModel, field_validator, ConfigDict
 
 from src.utils.resource_path import resource_path
 
@@ -30,6 +31,26 @@ class TableColumn(BaseModel):
     icon: str
     variable: str
     translation: str
+
+
+class Colors(BaseModel):
+    highlight: QColor
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("highlight", mode="before")
+    def parse_color(cls, v) -> QColor:
+
+        if isinstance(v, list):
+            if len(v) < 3:
+                raise ValueError("RGB list must contain at least 3 values.")
+            return QColor(*v)
+        elif isinstance(v, str):
+            return QColor(v)
+        elif isinstance(v, QColor):
+            return v
+        else:
+            raise ValueError(f"Unsupported colour format: {v}")
 
 
 @lru_cache

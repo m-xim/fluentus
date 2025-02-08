@@ -20,11 +20,7 @@ def configure_logger():
 
     if sys.stderr and not sys.stderr.isatty():
         logger.add(
-            sys.stderr,
-            format=log_format,
-            level="INFO",
-            colorize=True,
-            enqueue=True
+            sys.stderr, format=log_format, level="INFO", colorize=True, enqueue=True
         )
 
     # Add file handler with rotation, retention, and compression
@@ -41,7 +37,9 @@ def configure_logger():
 
     # Define a handler for uncaught exceptions
     def exception_handler(exception_type, exception, traceback):
-        logger.opt(exception=True).error(f"An unhandled exception occurred {exception_type}, {exception}, {traceback}")
+        logger.opt(exception=True).error(
+            f"An unhandled exception occurred {exception_type}, {exception}, {traceback}"
+        )
         excepthook(exception_type, exception, traceback)
 
     sys.excepthook = exception_handler

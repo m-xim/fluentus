@@ -3,7 +3,14 @@ from typing import Optional, Union
 
 from PyQt6 import uic
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QMessageBox, QFileDialog, QPlainTextEdit, QCheckBox, QComboBox
+from PyQt6.QtWidgets import (
+    QWidget,
+    QMessageBox,
+    QFileDialog,
+    QPlainTextEdit,
+    QCheckBox,
+    QComboBox,
+)
 
 from src.fluent_api.FluentAPI import FluentAPI
 from src.utils.config_reader import get_config, Program
@@ -24,7 +31,7 @@ class FluentusEditor(QWidget):
         self.table_manager = None
 
         # Load UI
-        uic.loadUi(resource_path('resource/ui/editor_window.ui'), self)
+        uic.loadUi(resource_path("resource/ui/editor_window.ui"), self)
 
         self.editors = [
             (self.value_1, "value", self.lang_1),
@@ -38,7 +45,7 @@ class FluentusEditor(QWidget):
         self.key_press_filter = KeyPressFilter()
 
         for editor, field, lang in self.editors:
-            if isinstance(editor, QPlainTextEdit) and field == 'value':
+            if isinstance(editor, QPlainTextEdit) and field == "value":
                 editor.installEventFilter(self.key_press_filter)
 
         # Connect buttons and language selectors
@@ -52,9 +59,13 @@ class FluentusEditor(QWidget):
         # Connect editor signals dynamically
         for editor, field, lang in self.editors:
             if isinstance(editor, QPlainTextEdit):
-                editor.textChanged.connect(partial(self.update_cache, editor, field, lang))
+                editor.textChanged.connect(
+                    partial(self.update_cache, editor, field, lang)
+                )
             elif isinstance(editor, QCheckBox):
-                editor.stateChanged.connect(partial(self.update_cache, editor, field, lang))
+                editor.stateChanged.connect(
+                    partial(self.update_cache, editor, field, lang)
+                )
 
         # Initialize with folder if provided
         if folder:
@@ -69,7 +80,9 @@ class FluentusEditor(QWidget):
         self.fluent_api = FluentAPI(folder)
 
         # Initialize table manager
-        self.table_manager = TableManager(self.table, self.fluent_api, self.load_variable)
+        self.table_manager = TableManager(
+            self.table, self.fluent_api, self.load_variable
+        )
 
         self.folder_text.setText(folder)
         self.refresh_editing_state()
@@ -81,7 +94,9 @@ class FluentusEditor(QWidget):
         """Save all changes and notify the user."""
         if self.fluent_api.edited:
             self.fluent_api.save_all_files()
-            QMessageBox.information(self, "Save Changes", "All changes have been saved successfully!")
+            QMessageBox.information(
+                self, "Save Changes", "All changes have been saved successfully!"
+            )
             self.refresh_editing_state(False)
         else:
             QMessageBox.information(self, "No Changes", "No changes have been made.")
@@ -118,7 +133,7 @@ class FluentusEditor(QWidget):
             language = lang.currentText()
             data = self.fluent_api.get_translation(variable, language)
 
-            if attribute and field == 'value':
+            if attribute and field == "value":
                 content = data.attributes[attribute]
             else:
                 content = getattr(data, field, None)
@@ -134,7 +149,7 @@ class FluentusEditor(QWidget):
                     editor.setPlainText(value_new)
                     editor.blockSignals(False)
 
-                    if field == 'value':
+                    if field == "value":
                         last_key = self.key_press_filter.get_last_key(editor)
                         if last_key not in (Qt.Key.Key_Backspace, Qt.Key.Key_Space):
                             position = min(position + 1, len(value_new))
@@ -159,16 +174,24 @@ class FluentusEditor(QWidget):
 
         self.close()
 
-    def update_cache(self, editor: Union[QPlainTextEdit, QCheckBox], field: str, lang: QComboBox):
+    def update_cache(
+        self, editor: Union[QPlainTextEdit, QCheckBox], field: str, lang: QComboBox
+    ):
         """Update the cache when an editor field is modified."""
 
         variable, attribute = self.table_manager.get_selected_names()
         if not variable:
             return
 
-        new_content = editor.toPlainText() if isinstance(editor, QPlainTextEdit) else editor.isChecked()
+        new_content = (
+            editor.toPlainText()
+            if isinstance(editor, QPlainTextEdit)
+            else editor.isChecked()
+        )
 
-        if self.fluent_api.update(variable, lang.currentText(), field, new_content, attribute):
+        if self.fluent_api.update(
+            variable, lang.currentText(), field, new_content, attribute
+        ):
             self.table_manager.set_current_item(lang.currentText())
 
         self.load_variable()
@@ -178,12 +201,14 @@ class FluentusEditor(QWidget):
 
     def refresh_editing_state(self, edit_status: Optional[bool] = None) -> None:
         """Refreshes the editing status in 'fluent_api' and updates the window title."""
-        
+
         if edit_status is not None:
             self.fluent_api.edited = edit_status
 
-        folder_suffix = f" - {self.fluent_api.folder_path}" if self.fluent_api.folder_path else ""
-        program = get_config(Program, 'program')
+        folder_suffix = (
+            f" - {self.fluent_api.folder_path}" if self.fluent_api.folder_path else ""
+        )
+        program = get_config(Program, "program")
 
         if self.fluent_api.edited:
             window_title = f"*{program.title}{folder_suffix}"
@@ -196,7 +221,7 @@ class FluentusEditor(QWidget):
         """Handle the close event with unsaved changes."""
         if self.fluent_api.edited:
             dialog = CloseDialog(self)
-            result = dialog.exec()
+            dialog.exec()
 
             if dialog.choice == "save":
                 self.fluent_api.save_all_files()
