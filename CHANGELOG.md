@@ -1,3 +1,14 @@
+## [1.3.1](https://github.com/m-xim/fluentus/compare/v1.3.0...v1.3.1) (2025-02-08)
+
+
+### Bug Fixes
+
+* **FluentAPI:** remove debug prints ([d355745](https://github.com/m-xim/fluentus/commit/d3557456aece15a6314f332198b6bb8f2fb531f1))
+* new_folder.png path ([254a470](https://github.com/m-xim/fluentus/commit/254a47095453fd127823fe05a84cce2f2c89150c))
+* **start_window.ui:** Adjust alternate row background in Projects table ([6864911](https://github.com/m-xim/fluentus/commit/6864911d2b2642578fb7be415046039235612cfd))
+* **theme:** correct system operations display in light theme ([f6122ec](https://github.com/m-xim/fluentus/commit/f6122ec40b8aa0e93e95972c9123d5e275b76c68))
+* **ui:** Update hover color for 'new_project' button and padding folder_button ([6263a8a](https://github.com/m-xim/fluentus/commit/6263a8a648811562dec00fb849dfc7277d102041))
+
 # [1.3.0-dev.4](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.3...v1.3.0-dev.4) (2025-02-08)
 
 
