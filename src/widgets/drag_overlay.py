@@ -33,9 +33,7 @@ class DragOverlay(QWidget):
         self.label = QLabel("Drag your project folder here", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet(
-            "color: white;"
-            "font-size: 20px;"
-            "font-weight: bold;"
+            "color: white;" "font-size: 20px;" "font-weight: bold;"
         )
         layout.addWidget(self.label)
 

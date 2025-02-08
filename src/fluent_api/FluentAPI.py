@@ -4,8 +4,19 @@ from pathlib import Path
 from typing import Union, List, Any, Set, Optional, DefaultDict
 
 from fluent.syntax import parse, serialize, FluentParser, ParseError
-from fluent.syntax.ast import (Resource, TextElement, Placeable, Junk, Message, Term, Comment, PatternElement,
-                               Attribute, Identifier, Pattern)
+from fluent.syntax.ast import (
+    Resource,
+    TextElement,
+    Placeable,
+    Junk,
+    Message,
+    Term,
+    Comment,
+    PatternElement,
+    Attribute,
+    Identifier,
+    Pattern,
+)
 from fluent.syntax.serializer import serialize_placeable
 from loguru import logger
 
@@ -16,15 +27,19 @@ from src.utils.config_reader import get_config, FtlFieldConfig
 
 
 class FluentAPI:
-    RE_NEWLINE_PATTERN = re.compile(r'\n(?!\\\\) ')
-    RE_LINE_SPLIT_PATTERN = re.compile(r'\n(?!\\\\)')
-    RE_SEARCH_WHITESPACE = re.compile(r'(\s+)$')
-    RE_SUB_IN_JUNK = re.compile(r'\n(?!\\\\)\s\s\s\s')
+    RE_NEWLINE_PATTERN = re.compile(r"\n(?!\\\\) ")
+    RE_LINE_SPLIT_PATTERN = re.compile(r"\n(?!\\\\)")
+    RE_SEARCH_WHITESPACE = re.compile(r"(\s+)$")
+    RE_SUB_IN_JUNK = re.compile(r"\n(?!\\\\)\s\s\s\s")
 
     def __init__(self, folder_path: Optional[Path | str]):
-        self.config: FtlFieldConfig = get_config(FtlFieldConfig, root_key='ftl_field')
-        self.bundles = defaultdict(list)  # Dictionary to store paths to .ftl files by language
-        self.translations: TranslationsType = defaultdict(lambda: defaultdict(Translation))
+        self.config: FtlFieldConfig = get_config(FtlFieldConfig, root_key="ftl_field")
+        self.bundles = defaultdict(
+            list
+        )  # Dictionary to store paths to .ftl files by language
+        self.translations: TranslationsType = defaultdict(
+            lambda: defaultdict(Translation)
+        )
 
         self.edited: bool = False
 
@@ -43,7 +58,14 @@ class FluentAPI:
         """Get translation data for a given variable and language."""
         return self.translations[variable][language]
 
-    def update(self, variable: str, language: str, field: str, value: Any, attribute: Optional[str] = None) -> bool:
+    def update(
+        self,
+        variable: str,
+        language: str,
+        field: str,
+        value: Any,
+        attribute: Optional[str] = None,
+    ) -> bool:
         """
         Update the value for a given variable and language in the cache.
 
@@ -60,17 +82,22 @@ class FluentAPI:
             translation = self.translations[variable][language]
         except KeyError as e:
             key = e.args[0]
-            error_message = f"Variable '{variable}' not found." if key == variable else \
-                f"Language '{language}' not found for variable '{variable}'."
+            error_message = (
+                f"Variable '{variable}' not found."
+                if key == variable
+                else f"Language '{language}' not found for variable '{variable}'."
+            )
             logger.error(error_message)
             raise KeyError(error_message) from e
 
         # Determine if there's a value to update
         # if value or value in {False, 0}: # TODO: need tests
         if value is not None:
-            if field in {'value', 'attributes'}:
-                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, '\n', value)
-                beautiful_value, exist_junk = self.elements_to_beautiful_str(sanitized_value)
+            if field in {"value", "attributes"}:
+                sanitized_value = re.sub(self.RE_NEWLINE_PATTERN, "\n", value)
+                beautiful_value, exist_junk = self.elements_to_beautiful_str(
+                    sanitized_value
+                )
 
                 if exist_junk:
                     parsed_value = value
@@ -80,9 +107,9 @@ class FluentAPI:
             else:
                 parsed_value = value
         else:
-            parsed_value = '' if field in {'value', 'attributes'} else None
+            parsed_value = "" if field in {"value", "attributes"} else None
 
-        if attribute and field == 'value':
+        if attribute and field == "value":
             attribute = attribute
             current_value = translation.attributes[attribute]
             if current_value != parsed_value:
@@ -97,7 +124,7 @@ class FluentAPI:
             current_value = getattr(translation, field, None)
             values_differ = (
                 current_value != parsed_value
-                if field == 'value'
+                if field == "value"
                 else current_value != parsed_value
             )
 
@@ -113,7 +140,10 @@ class FluentAPI:
         return False
 
     def parse_fluent_ast(
-            self, resource: Resource, lang_folder: Optional[str] = None, filepath: Optional[Path] = None
+        self,
+        resource: Resource,
+        lang_folder: Optional[str] = None,
+        filepath: Optional[Path] = None,
     ) -> TranslationsType:
         """
         Parses a Fluent AST and updates the internal translations cache.
@@ -128,10 +158,14 @@ class FluentAPI:
         """
         for entry in resource.body:
             if isinstance(entry, (Message, Term)):
-                var_name = f"-{entry.id.name}" if isinstance(entry, Term) else entry.id.name
+                var_name = (
+                    f"-{entry.id.name}" if isinstance(entry, Term) else entry.id.name
+                )
 
                 try:
-                    self.translations[var_name][lang_folder] = self.parse_message(entry, filepath=filepath)
+                    self.translations[var_name][lang_folder] = self.parse_message(
+                        entry, filepath=filepath
+                    )
                 except Exception as e:
                     logger.error(f"Error parsing {type(entry)} '{entry.id.name}': {e}")
             else:
@@ -139,17 +173,19 @@ class FluentAPI:
 
         return self.translations
 
-    def parse_message(self, entry: Union[Message, Term], filepath: Optional[Path] = None) -> Translation:
+    def parse_message(
+        self, entry: Union[Message, Term], filepath: Optional[Path] = None
+    ) -> Translation:
         """
-            Parses a message or term and returns a Translation object.
+        Parses a message or term and returns a Translation object.
 
-            Args:
-                entry (Union[Message, Term]): The entry to parse.
-                filepath (Optional[str]): File path for the translation, if available.
+        Args:
+            entry (Union[Message, Term]): The entry to parse.
+            filepath (Optional[str]): File path for the translation, if available.
 
-            Returns:
-                Translation: Parsed translation data.
-            """
+        Returns:
+            Translation: Parsed translation data.
+        """
 
         # Parse the comment
         comment, check = self._parse_comment(entry.comment)
@@ -161,14 +197,22 @@ class FluentAPI:
                 try:
                     attr_value = self.elements_to_str(attr.value.elements)
                 except Exception as e:
-                    attr_value = ''
-                    logger.error(f"Error parsing attribute '{attr.id.name}' in {filepath or 'unknown'}: {e}")
-                attributes[f'.{attr.id.name}'] = attr_value
+                    attr_value = ""
+                    logger.error(
+                        f"Error parsing attribute '{attr.id.name}' in {filepath or 'unknown'}: {e}"
+                    )
+                attributes[f".{attr.id.name}"] = attr_value
 
         # Parse value
-        value = self.elements_to_str(entry.value.elements) if entry.value else ''
+        value = self.elements_to_str(entry.value.elements) if entry.value else ""
 
-        return Translation(value=value, attributes=attributes, comment=comment, check=check, filepath=filepath)
+        return Translation(
+            value=value,
+            attributes=attributes,
+            comment=comment,
+            check=check,
+            filepath=filepath,
+        )
 
     def _parse_comment(self, comment: Optional[Comment]) -> tuple[Optional[str], bool]:
         """
@@ -186,7 +230,7 @@ class FluentAPI:
             return None, False
 
         comments_row = re.split(self.RE_LINE_SPLIT_PATTERN, comment.content)
-        check_prefix = f'@{self.config.check}: '
+        check_prefix = f"@{self.config.check}: "
         comments = []
         check = False
 
@@ -206,14 +250,14 @@ class FluentAPI:
         if isinstance(element, TextElement):
             return element.value
         if isinstance(element, Junk):
-            return element.content.removeprefix('variable =').strip()
+            return element.content.removeprefix("variable =").strip()
         if isinstance(element, Placeable):
             return serialize_placeable(element)
-        raise Exception('Unknown element type: {}'.format(type(element)))
+        raise Exception("Unknown element type: {}".format(type(element)))
 
     @staticmethod
     def elements_to_str(elements: elements_type) -> str:
-        return ''.join(FluentAPI.serialize_element(element) for element in elements)
+        return "".join(FluentAPI.serialize_element(element) for element in elements)
 
     @staticmethod
     def parse_str_to_ast(value: str) -> list[TextElement | Placeable]:
@@ -245,12 +289,16 @@ class FluentAPI:
 
         return beautiful_str, exist_junk
 
-    def translation_data_to_ast(self, translation_data: Translation, name: Optional[str] = None) -> Term | Message:
+    def translation_data_to_ast(
+        self, translation_data: Translation, name: Optional[str] = None
+    ) -> Term | Message:
         # Create comment
         comment = translation_data.comment or None
 
         if translation_data.check:
-            check_str = f"@{self.config.check}: {bool_to_string(translation_data.check)}"
+            check_str = (
+                f"@{self.config.check}: {bool_to_string(translation_data.check)}"
+            )
             comment = f"{comment}\n{check_str}" if comment else check_str
 
         comment_ast = Comment(content=comment) if comment else None
@@ -258,19 +306,19 @@ class FluentAPI:
         # Create attributes
         attributes = [
             Attribute(
-                id=Identifier(name=key.removeprefix('.')),
-                value=Pattern(elements=self.parse_str_to_ast(value))
+                id=Identifier(name=key.removeprefix(".")),
+                value=Pattern(elements=self.parse_str_to_ast(value)),
             )
             for key, value in translation_data.attributes.items()
         ]
 
         # Create Term or Message
-        if name.startswith('-'):
+        if name.startswith("-"):
             return Term(
-                id=Identifier(name=name.removeprefix('-')),
+                id=Identifier(name=name.removeprefix("-")),
                 value=Pattern(elements=self.parse_str_to_ast(translation_data.value)),
                 attributes=attributes,
-                comment=comment_ast
+                comment=comment_ast,
             )
 
         if not translation_data.value:
@@ -278,9 +326,16 @@ class FluentAPI:
         else:
             # Create value
             ast_value = Pattern(elements=self.parse_str_to_ast(translation_data.value))
-        return Message(id=Identifier(name=name), value=ast_value, attributes=attributes, comment=comment_ast)
+        return Message(
+            id=Identifier(name=name),
+            value=ast_value,
+            attributes=attributes,
+            comment=comment_ast,
+        )
 
-    def _load_files(self, locales_path: Union[str, Path], ext: str = ".ftl", encoding: str = "utf-8") -> None:
+    def _load_files(
+        self, locales_path: Union[str, Path], ext: str = ".ftl", encoding: str = "utf-8"
+    ) -> None:
         """
         Traverses the locales directory, finds all .ftl files, and loads them as FluentResource.
 
@@ -296,8 +351,12 @@ class FluentAPI:
         locales_path = Path(locales_path)
 
         if not locales_path.is_dir():
-            logger.error("Locales directory '{locales_path}' does not exist or is not a directory.")
-            raise FileNotFoundError(f"Locales directory '{locales_path}' does not exist or is not a directory.")
+            logger.error(
+                "Locales directory '{locales_path}' does not exist or is not a directory."
+            )
+            raise FileNotFoundError(
+                f"Locales directory '{locales_path}' does not exist or is not a directory."
+            )
 
         # Extract locales (names of subdirectories)
         locales = [item.name for item in locales_path.iterdir() if item.is_dir()]
@@ -311,8 +370,12 @@ class FluentAPI:
             ftl_files = list(locale_dir.rglob(f"*{ext}"))
 
             if not ftl_files:
-                logger.warning(f"No '{ext}' files found in locale directory '{locale_dir}'.")
-                raise ValueError(f"No '{ext}' files found in locale directory '{locale_dir}'.")
+                logger.warning(
+                    f"No '{ext}' files found in locale directory '{locale_dir}'."
+                )
+                raise ValueError(
+                    f"No '{ext}' files found in locale directory '{locale_dir}'."
+                )
 
             for ftl_file in ftl_files:
                 try:
@@ -321,10 +384,12 @@ class FluentAPI:
                     self.parse_fluent_ast(
                         resource=resource,
                         lang_folder=locale,
-                        filepath=ftl_file.relative_to(locales_path)
+                        filepath=ftl_file.relative_to(locales_path),
                     )
                     self.bundles[locale].append(resource)
-                    logger.debug(f"Loaded resource from file '{ftl_file}' for locale '{locale}'.")
+                    logger.debug(
+                        f"Loaded resource from file '{ftl_file}' for locale '{locale}'."
+                    )
                 except ParseError as e:
                     logger.error(f"Parse error in file '{ftl_file}': {e}")
                     raise ParseError(f"Parse error in file '{ftl_file}': {e}") from e
@@ -338,11 +403,17 @@ class FluentAPI:
         for variable_name, translations_by_lang in self.translations.items():
             for language, translation_data in translations_by_lang.items():
                 if not translation_data.filepath:
-                    logger.error(f"Missing filepath for variable '{variable_name}': {translation_data.filepath}")
-                    raise ValueError(f"Filepath is missing for language '{language}', variable '{variable_name}'")
+                    logger.error(
+                        f"Missing filepath for variable '{variable_name}': {translation_data.filepath}"
+                    )
+                    raise ValueError(
+                        f"Filepath is missing for language '{language}', variable '{variable_name}'"
+                    )
 
                 # Determine the output filepath
-                output_filepath = (target_folder or self.folder_path) / translation_data.filepath
+                output_filepath = (
+                    target_folder or self.folder_path
+                ) / translation_data.filepath
 
                 # Generate translation AST and append to the file content map
                 file_content_map[output_filepath].append(
@@ -352,9 +423,11 @@ class FluentAPI:
         # Write content to the respective files
         for filepath, content_ast in file_content_map.items():
             output_path = Path(filepath)
-            output_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
+            output_path.parent.mkdir(
+                parents=True, exist_ok=True
+            )  # Ensure the directory exists
 
-            with output_path.open('w', encoding='utf-8') as file:
+            with output_path.open("w", encoding="utf-8") as file:
                 file.write(serialize(Resource(body=content_ast)))
 
         self.edited = False
