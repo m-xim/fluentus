@@ -48,7 +48,9 @@ class FluentusStart(QMainWindow):
         # Set theme
         self.new_project: QPushButton
         self.new_project.setIcon(
-            get_tinted_icon("resource/icons/new_folder.png", self.new_project)
+            get_tinted_icon(
+                resource_path("resource/icons/new_folder.png"), self.new_project
+            )
         )
 
         # Retrieve required widgets

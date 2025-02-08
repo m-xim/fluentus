@@ -261,12 +261,18 @@ class FluentAPI:
 
     @staticmethod
     def parse_str_to_ast(value: str) -> list[TextElement | Placeable]:
-        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, '\n    ', value)
-        parsed = FluentParser(with_spans=False).parse_entry("variable ="
-                                                            f"\n    {sanitized_value}")
+        sanitized_value = re.sub(FluentAPI.RE_LINE_SPLIT_PATTERN, "\n    ", value)
+        parsed = FluentParser(with_spans=False).parse_entry(
+            f"variable ="
+            f"\n    {sanitized_value}"
+        )
         if isinstance(parsed, Junk):
-            logger.warning(f'Junk: {parsed}')
-            value = re.sub(FluentAPI.RE_SUB_IN_JUNK, '\n', (parsed.content.removeprefix('variable =').strip()))
+            logger.warning(f"Junk: {parsed}")
+            value = re.sub(
+                FluentAPI.RE_SUB_IN_JUNK,
+                "\n",
+                parsed.content.removeprefix("variable =").strip(),
+            )
             return [TextElement(value=value)]
         return parsed.value.elements
 
