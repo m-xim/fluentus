@@ -1,3 +1,10 @@
+# [1.3.0-dev.2](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.1...v1.3.0-dev.2) (2025-02-08)
+
+
+### Bug Fixes
+
+* new_folder.png path ([254a470](https://github.com/m-xim/fluentus/commit/254a47095453fd127823fe05a84cce2f2c89150c))
+
 # [1.3.0-dev.1](https://github.com/m-xim/fluentus/compare/v1.2.0...v1.3.0-dev.1) (2025-02-08)
 
 
