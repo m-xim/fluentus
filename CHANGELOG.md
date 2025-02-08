@@ -1,3 +1,10 @@
+# [1.3.0-dev.3](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.2...v1.3.0-dev.3) (2025-02-08)
+
+
+### Bug Fixes
+
+* **start_window.ui:** Adjust alternate row background in Projects table ([6864911](https://github.com/m-xim/fluentus/commit/6864911d2b2642578fb7be415046039235612cfd))
+
 # [1.3.0-dev.2](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.1...v1.3.0-dev.2) (2025-02-08)
 
 
