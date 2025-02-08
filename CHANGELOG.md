@@ -1,3 +1,10 @@
+# [1.3.0-dev.4](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.3...v1.3.0-dev.4) (2025-02-08)
+
+
+### Bug Fixes
+
+* **ui:** Update hover color for 'new_project' button and padding folder_button ([6263a8a](https://github.com/m-xim/fluentus/commit/6263a8a648811562dec00fb849dfc7277d102041))
+
 # [1.3.0-dev.3](https://github.com/m-xim/fluentus/compare/v1.3.0-dev.2...v1.3.0-dev.3) (2025-02-08)
 
 
